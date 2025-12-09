@@ -156,6 +156,9 @@ async function setupDatabase() {
       // Fix: If table existed but was empty/wrong schema, ensure critical columns exist
       try { await db.run("ALTER TABLE Restaurantes ADD COLUMN IF NOT EXISTS nombre_restaurante TEXT DEFAULT 'Sin Nombre'"); } catch (e) { }
       try { await db.run("ALTER TABLE Restaurantes ADD COLUMN IF NOT EXISTS plan_activo_hasta TEXT DEFAULT '2099-12-31'"); } catch (e) { }
+
+      // Fix: Drop conflicting legacy column 'nombre' if it exists causing Not Null errors
+      try { await db.run("ALTER TABLE Restaurantes DROP COLUMN IF EXISTS nombre"); } catch (e) { }
     }
   } catch (e) { }
 
