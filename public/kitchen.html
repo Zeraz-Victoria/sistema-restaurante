@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocina - Pedidos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <h1>👨‍🍳 Vista de Cocina</h1>
+        <nav>
+            <a href="index.html">Menú</a>
+            <a href="kitchen.html" class="active">Cocina</a>
+            <a href="admin.html">Admin</a>
+        </nav>
+    </header>
+
+    <main>
+        <div id="kitchen-orders" class="grid">
+            <!-- Orders will appear here via Socket.io or initial load -->
+            <p>Esperando pedidos...</p>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

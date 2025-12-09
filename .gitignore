@@ -1,0 +1,14 @@
+#ignorar la carpeta dependencias 
+node_modules/
+
+#ignorar el archivo de contraseñas
+.env
+
+# Sistema
+.DS_Store
+*.sqlite
+*.log
+debug_test.sqlite
+restaurante.sqlite
+INFORME_FINAL.md
+GUIA_DESPLIEGUE.md

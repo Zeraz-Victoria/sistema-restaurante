@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Digital</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>🍽️ Restaurante Demo</h1>
+        <nav>
+            <a href="index.html">Menú</a>
+            <a href="kitchen.html">Cocina</a>
+            <a href="admin.html">Admin</a>
+        </nav>
+    </header>
+
+    <main>
+        <div id="menu-container">
+            <!-- Categories and items will be loaded here -->
+            <p>Cargando menú...</p>
+        </div>
+    </main>
+
+    <!-- Floating Cart Button -->
+    <div id="cart-fab" onclick="toggleCartModal()">
+        🛒
+        <div id="cart-count">0</div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tu Pedido</h2>
+                <button class="close-modal" onclick="toggleCartModal()">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Tu Mesa:</label>
+                <input type="text" id="mesa-input" placeholder="Ej: Mesa 5" value="Mesa 1">
+            </div>
+
+            <ul id="cart-items" class="order-items">
+                <!-- Cart items go here -->
+            </ul>
+
+            <div style="display:flex; justify-content:space-between; margin: 1rem 0; font-weight:bold;">
+                <span>Total:</span>
+                <span id="cart-total">$0.00</span>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%" onclick="placeOrder()">Confirmar Pedido</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
