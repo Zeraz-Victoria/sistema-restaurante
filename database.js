@@ -153,6 +153,9 @@ async function setupDatabase() {
     } else {
       // Postgres specific migrations
       try { await db.run("ALTER TABLE Restaurantes ADD COLUMN IF NOT EXISTS slug TEXT"); } catch (e) { }
+      // Fix: If table existed but was empty/wrong schema, ensure critical columns exist
+      try { await db.run("ALTER TABLE Restaurantes ADD COLUMN IF NOT EXISTS nombre_restaurante TEXT DEFAULT 'Sin Nombre'"); } catch (e) { }
+      try { await db.run("ALTER TABLE Restaurantes ADD COLUMN IF NOT EXISTS plan_activo_hasta TEXT DEFAULT '2099-12-31'"); } catch (e) { }
     }
   } catch (e) { }
 
