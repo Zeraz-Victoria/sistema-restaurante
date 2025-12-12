@@ -159,6 +159,9 @@ async function setupDatabase() {
 
       // Fix: Drop conflicting legacy column 'nombre' if it exists causing Not Null errors
       try { await db.run("ALTER TABLE Restaurantes DROP COLUMN IF EXISTS nombre"); } catch (e) { }
+
+      // Fix: Rename legacy 'nombre' column in Categorias to 'nombre_categoria' if it exists
+      try { await db.run("ALTER TABLE Categorias RENAME COLUMN nombre TO nombre_categoria"); } catch (e) { }
     }
   } catch (e) { }
 
