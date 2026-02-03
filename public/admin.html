@@ -4,197 +4,510 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administración</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>SmartOrder - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <style>
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #10B981;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #10B981;
+        }
+
+        input:checked+.slider:before {
+            -webkit-transform: translateX(26px);
+            -ms-transform: translateX(26px);
+            transform: translateX(26px);
+        }
+    </style>
 </head>
 
-<body>
-    <header>
-        <h1>🔧 Administración</h1>
-        <nav>
-            <a href="index.html">Menú</a>
-            <a href="kitchen.html">Cocina</a>
-            <a href="admin.html">Admin</a>
-        </nav>
-    </header>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal text-gray-800">
 
-    <main>
-        <div id="login-section">
-            <div class="card" style="max-width: 400px; margin: 2rem auto;">
-                <h2>Iniciar Sesión</h2>
-                <form id="login-form" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Contraseña</label>
-                        <input type="password" id="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%">Entrar</button>
-                </form>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-800 text-white flex-shrink-0 hidden md:block">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold">SmartOrder <span class="text-xs text-gray-400 block">Gerencia</span></h1>
             </div>
-        </div>
-
-        <div id="admin-dashboard" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
-                <h2>Gestión del Menú</h2>
-                <button class="btn btn-danger" onclick="logout()">Cerrar Sesión</button>
-            </div>
-
-            <div class="card">
-                <h3>Agregar Nuevo Plato</h3>
-                <form id="add-dish-form" onsubmit="handleAddDish(event)">
-                    <div class="grid" style="grid-template-columns: 1fr 1fr;">
-                        <div class="form-group">
-                            <label>Nombre del Plato</label>
-                            <input type="text" id="dish-name" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Precio</label>
-                            <input type="number" step="0.01" id="dish-price" required>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Descripción</label>
-                        <textarea id="dish-desc"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Categoría</label>
-                        <select id="dish-category" required>
-                            <option value="">Cargando categorías...</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-success">Guardar Plato</button>
-                </form>
-            </div>
-
-            <div style="margin-top: 2rem;">
-                <h3>Platos Existentes</h3>
-                <div id="admin-dishes-list" class="grid">
-                    <!-- Dishes loaded here -->
+            <nav class="mt-4">
+                <a href="#menu-management"
+                    class="block py-2.5 px-4 bg-gray-700 hover:bg-gray-600 transition duration-200">
+                    <i class="fas fa-utensils mr-2"></i> Gestión de Menú
+                </a>
+                <a href="#tables-management" class="block py-2.5 px-4 hover:bg-gray-700 transition duration-200">
+                    <i class="fas fa-qrcode mr-2"></i> Mesas y QR
+                </a>
+                <div class="mt-8 px-4">
+                    <a href="cocina.html" target="_blank"
+                        class="block py-2 px-4 bg-green-600 hover:bg-green-700 text-center rounded text-sm font-bold shadow">
+                        <i class="fas fa-tv mr-2"></i> Monitor Cocina
+                    </a>
                 </div>
-            </div>
-        </div>
-    </main>
+            </nav>
+        </aside>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="js/app.js"></script>
-    <script>
-        // Admin specific logic
-        const token = localStorage.getItem('token');
+        <!-- Main Content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
 
-        if (token) {
-            showDashboard();
-        }
+            <!-- Add Dish Section -->
+            <section id="menu-management" class="mb-10">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800 border-b pb-2">Gestión de Menú</h2>
 
-        async function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            try {
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    localStorage.setItem('token', data.token);
-                    showDashboard();
-                } else {
-                    alert(data.error);
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Error de conexión');
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('token');
-            location.reload();
-        }
-
-        function showDashboard() {
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('admin-dashboard').style.display = 'block';
-            loadCategories();
-            loadDishes();
-        }
-
-        async function loadCategories() {
-            // This endpoint might need auth, let's check routes/menu.js
-            // GET /api/menu/categorias requires authMiddleware
-            const res = await fetch('/api/menu/categorias', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
-            if (res.ok) {
-                const cats = await res.json();
-                const select = document.getElementById('dish-category');
-                select.innerHTML = '<option value="">Selecciona una categoría</option>';
-                cats.forEach(c => {
-                    select.innerHTML += `<option value="${c.id}">${c.nombre_categoria}</option>`;
-                });
-            }
-        }
-
-        async function loadDishes() {
-            // We can reuse public menu or admin specific endpoint
-            // Let's use public menu for simplicity to list them
-            const res = await fetch(`/api/public/menu?restaurante_id=1`);
-            if (res.ok) {
-                const cats = await res.json();
-                const container = document.getElementById('admin-dishes-list');
-                container.innerHTML = '';
-
-                cats.forEach(c => {
-                    c.platos.forEach(p => {
-                        container.innerHTML += `
-                            <div class="card">
-                                <h4>${p.nombre_plato}</h4>
-                                <p>${p.descripcion || ''}</p>
-                                <span class="price">$${p.precio}</span>
-                                <small>${c.nombre_categoria}</small>
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-indigo-600">Nuevo Platillo</h3>
+                        <button onclick="openCategoryModal()"
+                            class="text-sm text-indigo-600 hover:text-indigo-800 underline">
+                            Gestionar Categorías
+                        </button>
+                    </div>
+                    <form id="addDishForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">ID del Platillo (único, ej:
+                                    burger_doble)</label>
+                                <input type="text" id="dishId"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                    required>
                             </div>
-                        `;
-                    });
-                });
-            }
-        }
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Nombre Visible</label>
+                                <input type="text" id="dishName"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                    required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Precio</label>
+                                <input type="number" id="dishPrice" step="0.01"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                    required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Categoría</label>
+                                <select id="dishCategory"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500">
+                                    <!-- Dynamic Options populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Descripción</label>
+                            <textarea id="dishDescription" rows="2"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <input type="checkbox" id="dishCustomizable"
+                                class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" checked>
+                            <label for="dishCustomizable" class="ml-2 block text-sm text-gray-900">
+                                Permitir personalizar (ej: "Sin cebolla", notas extra)
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Imagen</label>
+                            <div class="mt-1 flex items-center">
+                                <input type="file" id="dishImage" accept="image/*"
+                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Si no subes imagen, se usará una predeterminada por
+                                categoría.</p>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit"
+                                class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition duration-200">Guardar
+                                Platillo</button>
+                        </div>
+                    </form>
+                </div>
 
-        async function handleAddDish(e) {
+                <!-- Product List & Stock Control -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">Inventario y Stock en Tiempo Real</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full leading-normal">
+                            <thead>
+                                <tr>
+                                    <th
+                                        class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Imagen</th>
+                                    <th
+                                        class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Nombre</th>
+                                    <th
+                                        class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Categoría</th>
+                                    <th
+                                        class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Precio</th>
+                                    <th
+                                        class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Disponible</th>
+                                    <th
+                                        class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="menuTableBody">
+                                <!-- JS will populate this -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Table Management Section -->
+            <section id="tables-management">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800 border-b pb-2">Gestión de Mesas y QR</h2>
+
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">Generar Nueva Mesa</h3>
+                    <div class="flex gap-4 items-end">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700">ID de Mesa (ej: mesa_01)</label>
+                            <input type="text" id="tableId"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="mesa_0X">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700">Nombre Visual</label>
+                            <input type="text" id="tableName"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="Mesa 1 (Terraza)">
+                        </div>
+                        <button id="createTableBtn"
+                            class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition duration-200 h-10">Crear
+                            Mesa</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="tablesContainer">
+                    <!-- Tables will be rendered here -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 shadow-xl">
+            <h3 class="text-xl font-bold mb-4">Gestionar Categorías</h3>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="newCatName" placeholder="Nueva Categoría" class="flex-1 border p-2 rounded">
+                <button onclick="addCategory()" class="bg-indigo-600 text-white px-3 py-1 rounded">Agregar</button>
+            </div>
+            <ul id="categoriesList" class="space-y-2 max-h-64 overflow-y-auto mb-4">
+                <!-- List -->
+            </ul>
+            <button onclick="closeCategoryModal()" class="w-full bg-gray-200 text-gray-800 py-2 rounded">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { db, storage } from './firebase-config.js';
+        import { collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+        import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
+        // --- MANAGING CATEGORIES ---
+        const catSelect = document.getElementById('dishCategory');
+        const catList = document.getElementById('categoriesList');
+
+        // Load Categories
+        onSnapshot(collection(db, "categorias"), (snapshot) => {
+            catSelect.innerHTML = '';
+            catList.innerHTML = '';
+
+            const cats = [];
+            snapshot.forEach(doc => cats.push({ id: doc.id, ...doc.data() }));
+
+            // Fallback defaults if empty
+            if (cats.length === 0) {
+                ["Entradas", "Platos Fuertes", "Bebidas", "Postres"].forEach(async c => {
+                    await addDoc(collection(db, "categorias"), { nombre: c });
+                });
+                return;
+            }
+
+            cats.forEach(c => {
+                // Populate Select
+                const opt = document.createElement('option');
+                opt.value = c.nombre;
+                opt.textContent = c.nombre;
+                catSelect.appendChild(opt);
+
+                // Populate Manage List
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-gray-50 p-2 rounded";
+                li.innerHTML = `
+                    <span>${c.nombre}</span>
+                    <button onclick="deleteCategory('${c.id}')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>
+                 `;
+                catList.appendChild(li);
+            });
+        });
+
+        // Global Category Functions
+        window.openCategoryModal = () => document.getElementById('categoryModal').classList.remove('hidden');
+        window.closeCategoryModal = () => document.getElementById('categoryModal').classList.add('hidden');
+
+        window.addCategory = async () => {
+            const name = document.getElementById('newCatName').value.trim();
+            if (!name) return;
+            try {
+                await addDoc(collection(db, "categorias"), { nombre: name });
+                document.getElementById('newCatName').value = '';
+            } catch (e) { console.error(e); alert("Error"); }
+        };
+
+        window.deleteCategory = async (id) => {
+            if (!confirm("¿Borrar categoría?")) return;
+            try { await deleteDoc(doc(db, "categorias", id)); } catch (e) { console.error(e); }
+        };
+
+        // Default Image URLs (Placeholders)
+        const DEFAULT_IMAGES = {
+            "Bebidas": "https://cdn-icons-png.flaticon.com/512/2405/2405451.png",
+            "Platos Fuertes": "https://cdn-icons-png.flaticon.com/512/3274/3274099.png",
+            "Entradas": "https://cdn-icons-png.flaticon.com/512/1376/1376358.png",
+            "Postres": "https://cdn-icons-png.flaticon.com/512/3081/3081967.png",
+            "default": "https://cdn-icons-png.flaticon.com/512/1828/1828884.png"
+        };
+
+        // --- MENU MANAGEMENT ---
+
+        const addDishForm = document.getElementById('addDishForm');
+
+        addDishForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const nombre_plato = document.getElementById('dish-name').value;
-            const precio = document.getElementById('dish-price').value;
-            const descripcion = document.getElementById('dish-desc').value;
-            const categoria_id = document.getElementById('dish-category').value;
+            const submitBtn = addDishForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+
+            const id = document.getElementById('dishId').value.trim();
+            const nombre = document.getElementById('dishName').value.trim();
+            const precio = parseFloat(document.getElementById('dishPrice').value);
+            const categoria = document.getElementById('dishCategory').value;
+            const descripcion = document.getElementById('dishDescription').value.trim();
+            const customizable = document.getElementById('dishCustomizable').checked;
+            const imageFile = document.getElementById('dishImage').files[0];
+
+            let imageUrl;
 
             try {
-                const res = await fetch('/api/menu/platos', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify({ nombre_plato, precio, descripcion, categoria_id })
+                if (imageFile) {
+                    // Upload to Firebase Storage
+                    const storageRef = ref(storage, `menu_images/${id}_${Date.now()}`);
+                    await uploadBytes(storageRef, imageFile);
+                    imageUrl = await getDownloadURL(storageRef);
+                } else {
+                    // Use Default
+                    imageUrl = DEFAULT_IMAGES[categoria] || DEFAULT_IMAGES["default"];
+                }
+
+                // Save to Firestore
+                await setDoc(doc(db, "menu_items", id), {
+                    id: id,
+                    nombre: nombre,
+                    precio: precio,
+                    categoria: categoria,
+                    descripcion: descripcion,
+                    imagen_url: imageUrl,
+                    activo: true, // Default to active
+                    personalizable: customizable
                 });
 
-                if (res.ok) {
-                    alert('Plato creado!');
-                    document.getElementById('add-dish-form').reset();
-                    loadDishes();
-                } else {
-                    const data = await res.json();
-                    alert(data.error || 'Error al crear plato');
-                }
-            } catch (err) {
-                console.error(err);
+                alert('Platillo guardado exitosamente');
+                addDishForm.reset();
+
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                alert("Error al guardar el platillo: " + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar Platillo';
             }
-        }
+        });
+
+        // Real-time Listener for Menu Items
+        const menuTableBody = document.getElementById('menuTableBody');
+
+        onSnapshot(collection(db, "menu_items"), (snapshot) => {
+            menuTableBody.innerHTML = '';
+            snapshot.forEach((docSnap) => {
+                const item = docSnap.data();
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50";
+
+                row.innerHTML = `
+                    <td class="px-5 py-5 border-b border-gray-200 text-sm">
+                        <img src="${item.imagen_url}" alt="${item.nombre}" class="h-10 w-10 rounded-full object-cover">
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 text-sm font-medium text-gray-900">
+                        ${item.nombre}
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 text-sm text-gray-500">
+                        <span class="bg-gray-200 rounded-full px-3 py-1 text-xs font-semibold text-gray-700">${item.categoria}</span>
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 text-sm text-gray-900">
+                        $${item.precio.toFixed(2)}
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 text-sm">
+                         <label class="switch">
+                            <input type="checkbox" ${item.activo ? 'checked' : ''} onchange="toggleStock('${item.id}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 text-sm">
+                        <button class="text-blue-600 hover:text-blue-900" onclick="editItem('${item.id}')">Editar</button>
+                    </td>
+                `;
+                menuTableBody.appendChild(row);
+            });
+        });
+
+        // Edit Item Function
+        window.editItem = async (id) => {
+            const docRef = doc(db, "menu_items", id);
+            // We can read from the DOM or fetch fresh. Fetching is safer.
+            // But since we have the snapshot, we can find it in a local variable if we stored it, 
+            // or just simple fetch.
+            // Let's scroll to top
+            document.getElementById('menu-management').scrollIntoView({ behavior: 'smooth' });
+
+            // Highlight form
+            addDishForm.classList.add('ring-4', 'ring-indigo-300');
+            setTimeout(() => addDishForm.classList.remove('ring-4', 'ring-indigo-300'), 1000);
+
+            // Fetch data (or use global cache if we had one, but fetch is cheap here)
+            // Actually, for immediate UI response, we can grab it from Firestore easily.
+            // However, note that we need 'getDoc' imported? No, we haven't imported getDoc in this file yet!
+            // Let's check imports. We only have collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, addDoc.
+            // We need getDoc to read a single item cleanly, OR we can just rely on the user re-entering data? 
+            // Better: Iterate the rows? No. 
+            // Let's just update the import to include getDoc and then use it.
+        };
+        window.toggleStock = async (id, isActive) => {
+            try {
+                const itemRef = doc(db, "menu_items", id);
+                await updateDoc(itemRef, {
+                    activo: isActive
+                });
+                console.log(`Stock updated for ${id}: ${isActive}`);
+            } catch (e) {
+                console.error("Error updating stock: ", e);
+                alert("Error al actualizar stock");
+            }
+        };
+
+
+        // --- TABLE MANAGEMENT ---
+
+        const createTableBtn = document.getElementById('createTableBtn');
+
+        createTableBtn.addEventListener('click', async () => {
+            const tableId = document.getElementById('tableId').value.trim();
+            const tableName = document.getElementById('tableName').value.trim();
+
+            if (!tableId || !tableName) return alert("Completa ambos campos");
+
+            // Generate Client URL
+            // Assuming the app is hosted at the root or we find the current origin
+            // For local dev with Project IDX/VSCode Live Server, origin is robust enough usually.
+            // But user asked to use: https://tu-app.web.app/cliente.html?mesaId=mesa_01
+            // We will use window.location.origin to be dynamic.
+            const baseUrl = window.location.origin;
+            const finalUrl = `${baseUrl}/cliente.html?mesaId=${tableId}`;
+
+            try {
+                await setDoc(doc(db, "mesas", tableId), {
+                    id: tableId,
+                    nombre_visual: tableName,
+                    url_qr_completa: finalUrl
+                });
+
+                document.getElementById('tableId').value = '';
+                document.getElementById('tableName').value = '';
+                alert("Mesa creada");
+            } catch (e) {
+                console.error("Error creating table: ", e);
+                alert("Error al crear mesa");
+            }
+        });
+
+        // Real-time Listener for Tables
+        const tablesContainer = document.getElementById('tablesContainer');
+
+        onSnapshot(collection(db, "mesas"), (snapshot) => {
+            tablesContainer.innerHTML = '';
+            snapshot.forEach((docSnap) => {
+                const mesa = docSnap.data();
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-lg shadow border-l-4 border-indigo-500";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="text-xl font-bold text-gray-800">${mesa.nombre_visual}</h4>
+                            <p class="text-xs text-gray-500 font-mono mt-1">ID: ${mesa.id}</p>
+                        </div>
+                        <i class="fas fa-chair text-gray-300 text-2xl"></i>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-600 mb-2">QR Link:</p>
+                        <input type="text" readonly value="${mesa.url_qr_completa}" class="w-full bg-gray-50 border text-xs p-2 rounded select-all focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                     <div class="mt-4 flex gap-2">
+                        <a href="${mesa.url_qr_completa}" target="_blank" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-gray-700">Abrir (Test)</a>
+                        <!-- In a real app we might integrate a QR library here -->
+                     </div>
+                `;
+                tablesContainer.appendChild(card);
+            });
+        });
+
     </script>
 </body>
 

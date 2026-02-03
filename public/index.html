@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,20 +8,42 @@
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <header>
-        <h1>🍽️ Restaurante Demo</h1>
-        <nav>
-            <a href="index.html">Menú</a>
-            <a href="kitchen.html">Cocina</a>
-            <a href="admin.html">Admin</a>
-        </nav>
+    <header class="hero-header">
+        <div class="hero-content">
+            <div class="hero-title">
+                <h1 id="restaurant-name">Bienvenido</h1>
+                <div class="hero-subtitle">Experiencia Gastronómica</div>
+            </div>
+
+            <!-- Table Selector (Moved) -->
+            <div class="table-selector-container"
+                style="margin-top:1rem; background:rgba(255,255,255,0.2); backdrop-filter:blur(10px); padding:0.5rem 1rem; border-radius:30px; display:inline-flex; align-items:center; border:1px solid rgba(255,255,255,0.3);">
+                <select id="table-select"
+                    onchange="localStorage.setItem('selectedTable', this.value); updateCartTableDisplay()"
+                    style="background:transparent; border:none; color:white; font-weight:bold; outline:none; cursor:pointer; text-align:center; font-size:1rem; appearance:none; -webkit-appearance:none;">
+                    <option value="" style="color:black">📍 Escanear o Elegir</option>
+                </select>
+            </div>
+
+        </div>
     </header>
 
+    <!-- Sticky Category Nav -->
+    <div class="category-nav-container">
+        <div id="category-scroll" class="category-scroll">
+            <!-- Pills injected by JS -->
+        </div>
+    </div>
+
     <main>
+
+
         <div id="menu-container">
-            <!-- Categories and items will be loaded here -->
-            <p>Cargando menú...</p>
+            <div style="text-align:center; padding: 2rem; color:var(--gray-color);">
+                Cargando experiencias culinarias...
+            </div>
         </div>
     </main>
 
@@ -37,10 +60,10 @@
                 <h2>Tu Pedido</h2>
                 <button class="close-modal" onclick="toggleCartModal()">&times;</button>
             </div>
-            
-            <div class="form-group">
+
+            <div class="form-group" style="display:none;"> <!-- Hidden, using global selector -->
                 <label>Tu Mesa:</label>
-                <input type="text" id="mesa-input" placeholder="Ej: Mesa 5" value="Mesa 1">
+                <input type="text" id="mesa-input" placeholder="Ej: Mesa 5" value="">
             </div>
 
             <ul id="cart-items" class="order-items">
@@ -56,7 +79,23 @@
         </div>
     </div>
 
+    <!-- TIMER BANNER (Floating Top/Bottom) -->
+    <div id="timer-banner" class="timer-banner" style="display:none;">
+        <span style="font-size:1.5rem;">⏳</span>
+        <div style="flex:1;">
+            <div style="font-size:0.8rem; opacity:0.9;">Tu orden estará lista en aprox:</div>
+            <div id="timer-countdown" style="font-size:1.2rem; font-weight:bold;">--:--</div>
+        </div>
+    </div>
+
+    <!-- TOTAL BILL FOOTER -->
+    <div id="total-bill-footer" class="total-bill-footer" style="display:none;" onclick="printBillFromCustomer()">
+        <div style="font-size:0.9rem;">Total Acumulado</div>
+        <div id="sticky-total-amount" style="font-size:1.3rem; font-weight:800;">$0.00</div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

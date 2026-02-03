@@ -6,7 +6,7 @@ const dbPath = path.resolve(__dirname, 'restaurante.sqlite');
 const db = new sqlite3.Database(dbPath);
 
 (async () => {
-    const email = 'admin@example.com';
+    const email = 'admin@rest-a.com';
     const password = '123456';
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);

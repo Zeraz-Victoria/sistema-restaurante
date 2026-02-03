@@ -17,6 +17,7 @@ const createMenuRoutes = require('./routes/menu');
 const createPedidosRoutes = require('./routes/pedidos');
 const createPublicRoutes = require('./routes/public');
 const createTenantsRoutes = require('./routes/tenants');
+const createMesasRoutes = require('./routes/mesas');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -60,6 +61,8 @@ io.on('connection', (socket) => {
         app.use('/api/pedidos', createPedidosRoutes(db, io));
         app.use('/api/public', createPublicRoutes(db));
         app.use('/api/tenants', createTenantsRoutes(db));
+        app.use('/api/mesas', createMesasRoutes(db));
+        app.use('/api/upload', require('./routes/upload'));
 
         // Middleware de manejo de errores global
         app.use((err, req, res, next) => {

@@ -9,20 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 
-<body>
-    <header>
-        <h1>👨‍🍳 Vista de Cocina</h1>
-        <nav>
-            <a href="index.html">Menú</a>
-            <a href="kitchen.html" class="active">Cocina</a>
-            <a href="admin.html">Admin</a>
-        </nav>
+<body class="kds-body">
+    <header class="kds-header">
+        <h1>👨‍🍳 KDS - Cocina</h1>
+        <div class="kds-clock" id="kds-clock">--:--</div>
     </header>
 
-    <main>
-        <div id="kitchen-orders" class="grid">
+    <main class="kds-main">
+        <div id="kitchen-orders" class="kds-grid">
             <!-- Orders will appear here via Socket.io or initial load -->
-            <p>Esperando pedidos...</p>
+            <div class="empty-state">
+                <p>Esperando pedidos...</p>
+            </div>
         </div>
     </main>
 

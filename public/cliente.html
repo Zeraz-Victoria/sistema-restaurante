@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartOrder - Carta Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <style>
+        .bottom-nav {
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Hide scrollbar for category selector */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 pb-24">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 px-4 py-3 pb-0">
+        <div class="flex justify-between items-center mb-2">
+            <h1 class="text-xl font-bold text-gray-800">SmartOrder</h1>
+            <span id="tableNameDisplay" class="text-sm bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">...</span>
+        </div>
+        <!-- Categories Scroll -->
+        <div class="flex space-x-4 overflow-x-auto no-scrollbar pb-3" id="categoriesNav">
+            <button
+                class="whitespace-nowrap px-4 py-1.5 rounded-full bg-indigo-600 text-white font-medium text-sm shadow-md">Todo</button>
+            <button
+                class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 font-medium text-sm">Entradas</button>
+            <button
+                class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 font-medium text-sm">Platos
+                Fuertes</button>
+            <button
+                class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 font-medium text-sm">Bebidas</button>
+            <button
+                class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 font-medium text-sm">Postres</button>
+        </div>
+    </header>
+
+    <!-- Menu Grid -->
+    <main id="menuGrid" class="p-4 space-y-4">
+        <!-- Rendered by JS -->
+    </main>
+
+    <!-- Floating Check Button (Visible if cart has items) -->
+    <div id="cartButtonContainer" class="fixed bottom-6 left-0 right-0 px-4 z-20 hidden">
+        <button id="viewCartBtn"
+            class="w-full bg-indigo-600 text-white py-4 rounded-xl shadow-xl flex justify-between items-center px-6 text-lg font-bold">
+            <span>Ver Mi Pedido</span>
+            <span id="cartTotalBubble" class="bg-white text-indigo-600 px-3 py-1 rounded-full text-sm">0 items</span>
+        </button>
+    </div>
+
+    <!-- Empty State / Current Order Status -->
+    <div id="orderStatusBanner" class="hidden m-4 p-4 bg-teal-50 border border-teal-200 rounded-lg">
+        <h3 class="font-bold text-teal-800"><i class="fas fa-clock mr-2"></i>Orden en Curso</h3>
+        <p class="text-sm text-teal-600 mt-1">Tu pedido anterior se está preparando.</p>
+    </div>
+
+    <!-- MODAL: Product Details -->
+    <div id="productModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div
+            class="bg-white w-full sm:w-96 p-6 rounded-t-2xl sm:rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+
+            <img id="modalImg" src="" class="w-full h-48 object-cover rounded-lg mb-4">
+            <h2 id="modalTitle" class="text-2xl font-bold text-gray-800"></h2>
+            <p id="modalDesc" class="text-gray-500 text-sm mt-1 mb-4"></p>
+            <p id="modalPrice" class="text-xl font-bold text-indigo-600 mb-6"></p>
+
+            <form id="addToCartForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Personalizar</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="modifier" value="SIN CEBOLLA" class="rounded text-indigo-600">
+                            <span class="text-sm">Sin Cebolla</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="modifier" value="SIN SALSA" class="rounded text-indigo-600">
+                            <span class="text-sm">Sin Salsa</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="modifier" value="EXTRA QUESO" class="rounded text-indigo-600">
+                            <span class="text-sm">Extra Queso</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Notas de Cocina</label>
+                    <textarea id="modalNotes" class="w-full border rounded-lg p-2 text-sm"
+                        placeholder="Ej: Muy cocida, poca sal..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Prioridad de servicio</label>
+                    <select id="modalPriority" class="w-full border rounded-lg p-2 text-sm bg-white">
+                        <option value="plato_fuerte" selected>Normal (Junto al plato fuerte)</option>
+                        <option value="entrada">Servir como Entrada</option>
+                        <option value="bebida">Servir YA (Bebida)</option>
+                        <option value="postre">Servir al final (Postre)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center justify-between pt-4 border-t">
+                    <div class="flex items-center border rounded-lg">
+                        <button type="button" onclick="adjustQty(-1)" class="px-3 py-1 text-gray-600 text-lg">-</button>
+                        <span id="modalQty" class="px-2 font-bold">1</span>
+                        <button type="button" onclick="adjustQty(1)" class="px-3 py-1 text-gray-600 text-lg">+</button>
+                    </div>
+                    <button type="submit"
+                        class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex-1 ml-4">
+                        Agregar <span id="modalBtnPrice"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Cart Review -->
+    <div id="cartModal" class="fixed inset-0 bg-white z-50 hidden flex flex-col">
+        <div class="p-4 shadow-sm border-b flex justify-between items-center bg-white">
+            <h2 class="text-xl font-bold">Tu Pedido</h2>
+            <button onclick="toggleCart(false)"
+                class="text-gray-500 hover:text-gray-800 text-lg font-medium">Volver</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4" id="cartItemsContainer">
+            <!-- Items go here -->
+        </div>
+
+        <div class="p-4 bg-gray-50 border-t">
+            <div class="flex justify-between items-center mb-4 text-lg font-bold">
+                <span>Total Estimado</span>
+                <span id="cartTotalDisplay">$0.00</span>
+            </div>
+            <button id="sendOrderBtn"
+                class="w-full bg-green-600 text-white text-lg font-bold py-4 rounded-xl shadow-lg mb-2">
+                Enviar Orden a Cocina
+            </button>
+            <button id="payOrderBtn"
+                class="w-full bg-gray-800 text-white text-lg font-bold py-4 rounded-xl shadow-lg hidden">
+                Pedir Cuenta / Pagar
+            </button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, doc, getDoc, addDoc, updateDoc, onSnapshot, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        // --- INIT & STATE ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const MESA_ID = urlParams.get('mesaId');
+
+        if (!MESA_ID) {
+            document.body.innerHTML = '<div class="flex h-screen items-center justify-center p-6 text-center text-red-600 font-bold">Error: No se ha escaneado un código QR válido de una mesa.</div>';
+            throw new Error("No mesa_id");
+        }
+
+        let MENU_ITEMS = [];
+        let CART = [];
+        let ACTIVE_ORDER_ID = localStorage.getItem(`activeOrder_${MESA_ID}`);
+        let ACTIVE_ORDER_DATA = null;
+
+        // UI Elements
+        const menuGrid = document.getElementById('menuGrid');
+        const tableNameDisplay = document.getElementById('tableNameDisplay');
+        const cartButtonContainer = document.getElementById('cartButtonContainer');
+
+        // --- STARTUP LOGIC ---
+
+        // 1. Get Table Info
+        getDoc(doc(db, "mesas", MESA_ID)).then(snap => {
+            if (snap.exists()) {
+                tableNameDisplay.innerText = snap.data().nombre_visual;
+            } else {
+                tableNameDisplay.innerText = "Mesa Desconocida";
+            }
+        });
+
+        // 2. Load Menu Realtime
+        const q = query(collection(db, "menu_items"), where("activo", "==", true));
+        onSnapshot(q, (snapshot) => {
+            MENU_ITEMS = [];
+            menuGrid.innerHTML = '';
+
+            snapshot.forEach(doc => {
+                const item = doc.data();
+                MENU_ITEMS.push(item);
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-xl shadow-sm flex gap-4 cursor-pointer hover:shadow-md transition";
+                card.onclick = () => openProductModal(item.id);
+
+                card.innerHTML = `
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800">${item.nombre}</h3>
+                        <p class="text-xs text-gray-500 line-clamp-2 mt-1">${item.descripcion || ''}</p>
+                        <p class="text-indigo-600 font-bold mt-2">$${item.precio.toFixed(2)}</p>
+                    </div>
+                    <img src="${item.imagen_url}" class="w-24 h-24 rounded-lg object-cover bg-gray-100">
+                `;
+                menuGrid.appendChild(card);
+            });
+        });
+
+        // 3. Check for Active Order in Firestore if ID exists in local
+        if (ACTIVE_ORDER_ID) {
+            checkActiveOrder();
+        }
+
+        function checkActiveOrder() {
+            if (!ACTIVE_ORDER_ID) return;
+
+            onSnapshot(doc(db, "ordenes", ACTIVE_ORDER_ID), (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.estado === 'pagado') {
+                        // Reset if paid
+                        localStorage.removeItem(`activeOrder_${MESA_ID}`);
+                        ACTIVE_ORDER_ID = null;
+                        ACTIVE_ORDER_DATA = null;
+                        // Keep UI clean for new order
+                    } else {
+                        ACTIVE_ORDER_DATA = data;
+                        document.getElementById('orderStatusBanner').classList.remove('hidden');
+                        updateCartUI(); // Update UI to show "Pay" button possibility
+                    }
+                } else {
+                    // Document deleted?
+                    localStorage.removeItem(`activeOrder_${MESA_ID}`);
+                    ACTIVE_ORDER_ID = null;
+                }
+            });
+        }
+
+
+        // --- CART LOGIC ---
+
+        window.openProductModal = (itemId) => {
+            const item = MENU_ITEMS.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('modalTitle').innerText = item.nombre;
+            document.getElementById('modalDesc').innerText = item.descripcion || '';
+            document.getElementById('modalPrice').innerText = `$${item.precio.toFixed(2)}`;
+            document.getElementById('modalImg').src = item.imagen_url;
+            document.getElementById('modalBtnPrice').innerText = `$${item.precio.toFixed(2)}`;
+            document.getElementById('modalQty').innerText = "1";
+            document.getElementById('modalNotes').value = "";
+            document.getElementById('modalPriority').value = "plato_fuerte"; // Default
+
+            // Toggle Customization Sections
+            const modSection = document.getElementById('modifiersSection');
+            const noteSection = document.getElementById('notesSection');
+            
+            if (item.personalizable === false) {
+                modSection.classList.add('hidden');
+                noteSection.classList.add('hidden'); // Assuming 'notes' are also part of personalization
+            } else {
+                modSection.classList.remove('hidden');
+                noteSection.classList.remove('hidden');
+            }
+
+            // Reset checkboxes
+            document.querySelectorAll('input[name="modifier"]').forEach(c => c.checked = false);
+
+            document.getElementById('productModal').dataset.itemId = itemId;
+            document.getElementById('productModal').classList.remove('hidden');
+        };
+
+        window.closeModal = () => {
+            document.getElementById('productModal').classList.add('hidden');
+        };
+
+        window.adjustQty = (delta) => {
+            const qtyEl = document.getElementById('modalQty');
+            let val = parseInt(qtyEl.innerText) + delta;
+            if (val < 1) val = 1;
+            qtyEl.innerText = val;
+
+            // Update button price
+            const itemId = document.getElementById('productModal').dataset.itemId;
+            const item = MENU_ITEMS.find(i => i.id === itemId);
+            document.getElementById('modalBtnPrice').innerText = `$${(item.precio * val).toFixed(2)}`;
+        };
+
+        document.getElementById('addToCartForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemId = document.getElementById('productModal').dataset.itemId;
+            const item = MENU_ITEMS.find(i => i.id === itemId);
+
+            const qty = parseInt(document.getElementById('modalQty').innerText);
+            const notes = document.getElementById('modalNotes').value.trim();
+            const priority = document.getElementById('modalPriority').value;
+
+            const modifiers = [];
+            document.querySelectorAll('input[name="modifier"]:checked').forEach(c => modifiers.push(c.value));
+
+            CART.push({
+                producto_id: item.id,
+                nombre_snapshot: item.nombre,
+                precio_snapshot: item.precio,
+                cantidad: qty,
+                modificadores: modifiers,
+                nota_cliente: notes,
+                prioridad_tiempo: priority
+            });
+
+            closeModal();
+            updateCartButton();
+
+            // Animate button
+            const btn = document.getElementById('viewCartBtn');
+            btn.classList.add('scale-105');
+            setTimeout(() => btn.classList.remove('scale-105'), 200);
+        });
+
+        function updateCartButton() {
+            const count = CART.reduce((acc, item) => acc + item.cantidad, 0);
+            document.getElementById('cartTotalBubble').innerText = `${count} items`;
+
+            if (count > 0 || (ACTIVE_ORDER_DATA && ACTIVE_ORDER_DATA.estado !== 'pagado')) {
+                cartButtonContainer.classList.remove('hidden');
+            } else {
+                cartButtonContainer.classList.add('hidden');
+            }
+        }
+
+
+        // --- CART MODAL & CHECKOUT ---
+
+        document.getElementById('viewCartBtn').addEventListener('click', () => {
+            toggleCart(true);
+            renderCartModal();
+        });
+
+        window.toggleCart = (show) => {
+            const el = document.getElementById('cartModal');
+            if (show) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        };
+
+        function renderCartModal() {
+            const container = document.getElementById('cartItemsContainer');
+            container.innerHTML = '';
+
+            let total = 0;
+
+            // 1. Render Active Order first (if exists)
+            if (ACTIVE_ORDER_DATA) {
+                const header = document.createElement('h3');
+                header.className = "text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 mt-2";
+                header.innerText = "EN COCINA / ENTREGADO";
+                container.appendChild(header);
+
+                ACTIVE_ORDER_DATA.items.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = "flex justify-between items-start mb-4 opacity-75";
+                    el.innerHTML = `
+                        <div class="flex-1">
+                            <p class="font-bold text-sm text-gray-800"><span class="text-xs bg-gray-200 px-1 rounded mr-1">x${item.cantidad}</span> ${item.nombre_snapshot}</p>
+                            ${item.modificadores.length ? `<p class="text-xs text-red-500">${item.modificadores.join(', ')}</p>` : ''}
+                        </div>
+                        <span class="font-mono text-sm">$${(item.precio_snapshot * item.cantidad).toFixed(2)}</span>
+                    `;
+                    container.appendChild(el);
+                    total += (item.precio_snapshot * item.cantidad);
+                });
+            }
+
+            // 2. Render Current Local Cart
+            if (CART.length > 0) {
+                const header = document.createElement('h3');
+                header.className = "text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2 mt-4 border-t pt-4";
+                header.innerText = "NUEVOS (FALTA ENVIAR)";
+                container.appendChild(header);
+
+                CART.forEach((item, index) => {
+                    const el = document.createElement('div');
+                    el.className = "flex justify-between items-start mb-4";
+                    el.innerHTML = `
+                         <div class="flex-1">
+                            <p class="font-bold text-sm text-gray-800"><span class="text-xs bg-indigo-100 text-indigo-800 px-1 rounded mr-1">x${item.cantidad}</span> ${item.nombre_snapshot}</p>
+                            ${item.modificadores.length ? `<p class="text-xs text-red-500 font-bold">${item.modificadores.join(', ')}</p>` : ''}
+                            ${item.nota_cliente ? `<p class="text-xs text-gray-500 italic">"${item.nota_cliente}"</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                             <span class="font-mono text-sm block mb-1">$${(item.precio_snapshot * item.cantidad).toFixed(2)}</span>
+                             <button onclick="removeItem(${index})" class="text-xs text-red-400 underline">Quitar</button>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                    total += (item.precio_snapshot * item.cantidad);
+                });
+            }
+
+            document.getElementById('cartTotalDisplay').innerText = `$${total.toFixed(2)}`;
+
+            // Button Logic
+            const sendBtn = document.getElementById('sendOrderBtn');
+            const payBtn = document.getElementById('payOrderBtn');
+
+            if (CART.length === 0 && ACTIVE_ORDER_DATA) {
+                sendBtn.classList.add('hidden');
+                payBtn.classList.remove('hidden');
+                payBtn.onclick = handlePayment;
+            } else if (CART.length > 0) {
+                sendBtn.classList.remove('hidden');
+                payBtn.classList.add('hidden');
+                // Calculate just the new total to add
+                const newTotal = CART.reduce((acc, i) => acc + (i.precio_snapshot * i.cantidad), 0);
+                sendBtn.innerText = `Enviar a Cocina ($${newTotal.toFixed(2)})`;
+                sendBtn.onclick = sendOrder;
+            } else {
+                sendBtn.classList.add('hidden');
+                payBtn.classList.add('hidden');
+            }
+        }
+
+        window.removeItem = (index) => {
+            CART.splice(index, 1);
+            updateCartButton();
+            renderCartModal();
+        };
+
+        // --- ACTIONS ---
+
+        async function sendOrder() {
+            const btn = document.getElementById('sendOrderBtn');
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+
+            try {
+                // Determine Total Price Update
+                // We trust Firestore logic or recalculate total. Here we store frozen prices.
+                const cartTotal = CART.reduce((acc, i) => acc + (i.precio_snapshot * i.cantidad), 0);
+
+                if (ACTIVE_ORDER_ID) {
+                    // APPEND
+                    const orderRef = doc(db, "ordenes", ACTIVE_ORDER_ID);
+
+                    // We need to fetch current total first to add to it properly, 
+                    // or just rely on the array and sum it up every time (safer).
+                    // For now, let's just push items. Ideally use a cloud function triggers for totals.
+                    // But we will simple read-modify-write for total a pagar here to keep it simple.
+
+                    const currentDoc = await getDoc(orderRef);
+                    const currentTotal = currentDoc.data().total_a_pagar || 0;
+
+                    await updateDoc(orderRef, {
+                        items: arrayUnion(...CART),
+                        total_a_pagar: currentTotal + cartTotal,
+                        estado: 'pendiente' // If it was 'cocinando', maybe revert to pending or keep separate?
+                        // User prompt says: "cocinando" -> "listo".
+                        // If we add new items, usually the KDS needs to see them.
+                        // Setting to 'pendiente' ensures KDS sees it if filter is strictly 'pendiente'.
+                        // But if KDS shows 'cocinando', we might want to split logic?
+                        // Simplest: Set to 'pendiente' or 'actualizado' (if supported) so kitchen notices.
+                    });
+
+                } else {
+                    // CREATE NEW
+                    const newOrder = {
+                        mesa_id: MESA_ID,
+                        estado: 'pendiente',
+                        timestamp_creacion: Math.floor(Date.now() / 1000),
+                        total_a_pagar: cartTotal,
+                        items: CART
+                    };
+
+                    const docRef = await addDoc(collection(db, "ordenes"), newOrder);
+                    ACTIVE_ORDER_ID = docRef.id;
+                    localStorage.setItem(`activeOrder_${MESA_ID}`, ACTIVE_ORDER_ID);
+                    checkActiveOrder();
+                }
+
+                CART = [];
+                updateCartButton();
+                toggleCart(false);
+                alert("¡Orden enviada a cocina!");
+
+            } catch (e) {
+                console.error("Error sending order: ", e);
+                alert("Error al enviar la orden. Intenta de nuevo.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function handlePayment() {
+            if (!confirm("¿Deseas pedir la cuenta y cerrar la mesa?")) return;
+
+            try {
+                const orderRef = doc(db, "ordenes", ACTIVE_ORDER_ID);
+                await updateDoc(orderRef, {
+                    estado: 'pagado'
+                });
+
+                alert("Gracias por tu visita. ¡Hasta pronto!");
+                // Local state will be cleared by the snapshot listener
+                toggleCart(false);
+            } catch (e) {
+                console.error("Error paying: ", e);
+                alert("Error al procesar pago");
+            }
+        }
+
+        window.updateCartUI = updateCartButton; // Helper
+
+    </script>
+</body>
+
+</html>

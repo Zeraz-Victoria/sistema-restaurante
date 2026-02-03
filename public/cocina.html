@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartOrder - KDS (Cocina)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Utilities for High Contrast */
+        .modifier-alert {
+            color: #EF4444;
+            /* Red-500 */
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .timer-green {
+            border: 4px solid #10B981;
+        }
+
+        .timer-yellow {
+            border: 4px solid #F59E0B;
+        }
+
+        .timer-red {
+            border: 4px solid #EF4444;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .7;
+                border-color: #FECACA;
+            }
+        }
+
+        body {
+            background-color: #111827;
+            color: #F3F4F6;
+        }
+    </style>
+</head>
+
+<body class="p-4">
+
+    <header class="mb-6 flex justify-between items-center border-b border-gray-700 pb-4">
+        <h1 class="text-3xl font-bold tracking-wider text-white">MONITOR DE COCINA (KDS)</h1>
+        <div id="clock" class="text-xl font-mono text-gray-400">00:00:00</div>
+    </header>
+
+    <main id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- Tarjetas de Ordenes Inyectadas por JS -->
+    </main>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, query, where, onSnapshot, doc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        const ordersGrid = document.getElementById('ordersGrid');
+
+        // --- REAL TIME CLOCK ---
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('es-ES');
+            updateOrderTimers(); // Recalculate colors every second/minute
+        }, 1000);
+
+
+        // --- FIRESTORE LISTENER ---
+        // Query: Orders where status is 'pendiente' OR 'cocinando'
+        // Firestore 'in' query supports up to 10 values.
+        const q = query(
+            collection(db, "ordenes"),
+            where("estado", "in", ["pendiente", "cocinando"])
+            // Note: Compound queries with 'orderBy' usually require an index. 
+            // We'll sort via JS for simplicity if index errors arise, or assume index creation.
+        );
+
+        let currentOrders = [];
+
+        onSnapshot(q, (snapshot) => {
+            const fetchedOrders = [];
+            snapshot.forEach((doc) => {
+                fetchedOrders.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Client-side Sort: Oldest first (FIFO)
+            fetchedOrders.sort((a, b) => a.timestamp_creacion - b.timestamp_creacion);
+
+            renderOrders(fetchedOrders);
+            currentOrders = fetchedOrders; // Cache for timer updates
+        });
+
+
+        // --- RENDER LOGIC ---
+        function renderOrders(orders) {
+            ordersGrid.innerHTML = '';
+
+            if (orders.length === 0) {
+                ordersGrid.innerHTML = '<p class="text-gray-500 text-center col-span-full mt-10">No hay órdenes pendientes.</p>';
+                return;
+            }
+
+            orders.forEach(order => {
+                const card = document.createElement('div');
+                // Base classes
+                card.className = "bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col justify-between min-h-[300px]";
+
+                // Assign Timer Class based on current time
+                card.classList.add(getTimerClass(order.timestamp_creacion));
+                // Add ID for dynamic timer updates without re-render needed necessarily, 
+                // but re-render is safer for exact sync.
+                card.dataset.timestamp = order.timestamp_creacion;
+
+                const creationTime = new Date(order.timestamp_creacion * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                // Items HTML Construction
+                const itemsHtml = order.items.map(item => `
+                    <div class="border-b border-gray-700 py-2 last:border-0">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-lg text-white">
+                                ${item.cantidad}x ${item.nombre_snapshot}
+                            </span>
+                        </div>
+                        
+                        ${item.modificadores && item.modificadores.length > 0
+                        ? `<div class="modifier-alert mt-1 pl-4 border-l-2 border-red-500">
+                                ${item.modificadores.join('<br>')}
+                               </div>`
+                        : ''}
+                        
+                        ${item.nota_cliente
+                        ? `<p class="text-yellow-300 text-sm mt-1 italic">"Nota: ${item.nota_cliente}"</p>`
+                        : ''}
+                    </div>
+                `).join('');
+
+                const statusColor = order.estado === 'pendiente' ? 'bg-blue-600' : 'bg-orange-600';
+                const statusText = order.estado === 'pendiente' ? 'PENDIENTE' : 'COCINANDO';
+
+                card.innerHTML = `
+                    <div class="p-4 flex-grow">
+                        <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
+                             <div>
+                                <h2 class="text-xl font-bold text-white">Mesa: ${translateMesaId(order.mesa_id)}</h2>
+                                <p class="text-xs text-gray-400">ID: ...${order.id.slice(-6)}</p>
+                             </div>
+                             <div class="text-right">
+                                <span class="text-2xl font-mono font-bold">${creationTime}</span>
+                                <div class="text-xs uppercase font-bold text-gray-500">Hora Entrada</div>
+                             </div>
+                        </div>
+
+                        <!-- Items List -->
+                        <div class="space-y-1">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+
+                    <!-- Actions Footer -->
+                    <div class="p-4 bg-gray-900 border-t border-gray-700">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="px-2 py-1 rounded text-xs font-bold text-white uppercase ${statusColor}">
+                                ${statusText}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            ${order.estado === 'pendiente'
+                        ? `<button onclick="updateStatus('${order.id}', 'cocinando')" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-4 rounded transition">
+                                     EMPEZAR
+                                   </button>`
+                        : `<button disabled class="bg-gray-700 text-gray-500 font-bold py-3 px-4 rounded cursor-not-allowed">
+                                     EN PROCESO
+                                   </button>`
+                    }
+                            
+                            <button onclick="updateStatus('${order.id}', 'listo')" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded transition">
+                                TERMINAR
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                ordersGrid.appendChild(card);
+            });
+        }
+
+        // --- HELPER LOGIC ---
+
+        // Simple placeholder for mesa ID translation or just format it
+        function translateMesaId(mesaId) {
+            // Ideally looking up in a 'mesas' dictionary, but simple formatting is fine here
+            return mesaId.replace('mesa_', '').replace('_', ' ').toUpperCase();
+        }
+
+        function getTimerClass(timestamp) {
+            const now = Math.floor(Date.now() / 1000);
+            const elapsedMinutes = (now - timestamp) / 60;
+
+            if (elapsedMinutes < 15) return 'timer-green';
+            if (elapsedMinutes < 25) return 'timer-yellow';
+            return 'timer-red';
+        }
+
+        // Expose to window for interval updates
+        window.updateOrderTimers = () => {
+            const allCards = document.querySelectorAll('#ordersGrid > div');
+            allCards.forEach(card => {
+                const ts = parseInt(card.dataset.timestamp);
+                // remove old
+                card.classList.remove('timer-green', 'timer-yellow', 'timer-red');
+                // add new
+                card.classList.add(getTimerClass(ts));
+            });
+        };
+
+        // --- ACTIONS ---
+        window.updateStatus = async (orderId, newStatus) => {
+            try {
+                const orderRef = doc(db, "ordenes", orderId);
+                await updateDoc(orderRef, {
+                    estado: newStatus
+                });
+                // Snapshot will auto-update UI
+            } catch (e) {
+                console.error("Error updating status:", e);
+                alert("Error al actualizar estado");
+            }
+        };
+
+    </script>
+</body>
+
+</html>

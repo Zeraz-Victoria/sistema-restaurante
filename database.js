@@ -150,6 +150,20 @@ async function setupDatabase() {
     if (!isPostgres) {
       // SQLite specific migrations
       try { await db.run("ALTER TABLE Restaurantes ADD COLUMN slug TEXT"); } catch (e) { }
+      // Fix: Ensure standard columns exist if table was legacy
+      try { await db.run("ALTER TABLE Restaurantes ADD COLUMN nombre_restaurante TEXT DEFAULT 'Sin Nombre'"); } catch (e) { }
+      try { await db.run("ALTER TABLE Restaurantes ADD COLUMN plan_activo_hasta TEXT DEFAULT '2099-12-31'"); } catch (e) { }
+
+      // Fix: Rename legacy 'nombre' column in Categorias to 'nombre_categoria' if it exists
+      try { await db.run("ALTER TABLE Categorias RENAME COLUMN nombre TO nombre_categoria"); } catch (e) { }
+
+      try { await db.run("ALTER TABLE Platos RENAME COLUMN nombre TO nombre_plato"); } catch (e) { }
+
+      // NUEVO: Agregar columna tiempo_preparacion
+      try { await db.run("ALTER TABLE Platos ADD COLUMN IF NOT EXISTS tiempo_preparacion INTEGER DEFAULT 15"); } catch (e) { }
+      // NUEVO: Agregar columna hora_entrega_estimada
+      try { await db.run("ALTER TABLE Pedidos ADD COLUMN IF NOT EXISTS hora_entrega_estimada TEXT"); } catch (e) { }
+
     } else {
       // Postgres specific migrations
       try { await db.run("ALTER TABLE Restaurantes ADD COLUMN IF NOT EXISTS slug TEXT"); } catch (e) { }
@@ -162,15 +176,23 @@ async function setupDatabase() {
 
       // Fix: Rename legacy 'nombre' column in Categorias to 'nombre_categoria' if it exists
       try { await db.run("ALTER TABLE Categorias RENAME COLUMN nombre TO nombre_categoria"); } catch (e) { }
+
+      // Fix: Rename legacy 'nombre' column in Platos to 'nombre_plato' if it exists
+      try { await db.run("ALTER TABLE Platos RENAME COLUMN nombre TO nombre_plato"); } catch (e) { }
+
+      // NUEVO: Agregar columna tiempo_preparacion a Platos
+      try { await db.run("ALTER TABLE Platos ADD COLUMN IF NOT EXISTS tiempo_preparacion INTEGER DEFAULT 15"); } catch (e) { }
+      // NUEVO: Agregar columna hora_entrega_estimada a Pedidos
+      try { await db.run("ALTER TABLE Pedidos ADD COLUMN IF NOT EXISTS hora_entrega_estimada TEXT"); } catch (e) { }
     }
   } catch (e) { }
 
   // Seed Restaurante Demo
   try {
     if (isPostgres) {
-      await db.run("INSERT INTO Restaurantes (nombre_restaurante, slug, plan_activo_hasta) VALUES ($1, $2, $3) ON CONFLICT (nombre_restaurante) DO NOTHING", ['Restaurante Demo', 'restaurante-demo', '2099-12-31']);
+      await db.run("INSERT INTO Restaurantes (nombre_restaurante, slug, plan_activo_hasta) VALUES ($1, $2, $3) ON CONFLICT (nombre_restaurante) DO NOTHING", ['Restaurante A', 'rest-a', '2099-12-31']);
     } else {
-      await db.run("INSERT OR IGNORE INTO Restaurantes (nombre_restaurante, slug, plan_activo_hasta) VALUES (?, ?, ?)", ['Restaurante Demo', 'restaurante-demo', '2099-12-31']);
+      await db.run("INSERT OR IGNORE INTO Restaurantes (nombre_restaurante, slug, plan_activo_hasta) VALUES (?, ?, ?)", ['Restaurante A', 'rest-a', '2099-12-31']);
     }
   } catch (e) { }
 
@@ -214,7 +236,8 @@ async function setupDatabase() {
           descripcion ${TEXT_TYPE},
           precio REAL NOT NULL,
           categoria_id INTEGER NOT NULL REFERENCES Categorias(id),
-          imagen_url ${TEXT_TYPE}
+          imagen_url ${TEXT_TYPE},
+          tiempo_preparacion INTEGER DEFAULT 15
       );
     `);
 
@@ -236,7 +259,8 @@ async function setupDatabase() {
           hora_pedido ${TEXT_TYPE} DEFAULT CURRENT_TIMESTAMP,
           mesa_id INTEGER NOT NULL REFERENCES Mesas(id),
           restaurante_id INTEGER NOT NULL REFERENCES Restaurantes(id),
-          total REAL DEFAULT 0
+          total REAL DEFAULT 0,
+          hora_entrega_estimada ${TEXT_TYPE}
       );
     `);
 

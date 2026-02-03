@@ -82,15 +82,24 @@ function createMenuRoutes(db) {
         return res.status(403).json({ error: 'No tienes permiso o no existe la categoría.' });
       }
 
-      // 2. Verificar si tiene platos asociados
+      // 2. Eliminar platos y dependencias (Cascade Manual)
       const platos = await db.all("SELECT id FROM Platos WHERE categoria_id = ?", [id]);
+
       if (platos.length > 0) {
-        return res.status(400).json({ error: 'No se puede eliminar: La categoría tiene platos asociados.' });
+        const platoIds = platos.map(p => p.id);
+        // Eliminar modificadores de estos platos
+        // Como sqlite/node driver no soporta arrays en IN (?), lo hacemos iterando o construyendo query
+        // Para simplicidad en este proyecto pequeño:
+        for (const pid of platoIds) {
+          await db.run("DELETE FROM Modificadores WHERE plato_id = ?", [pid]);
+        }
+        // Eliminar platos
+        await db.run("DELETE FROM Platos WHERE categoria_id = ?", [id]);
       }
 
-      // 3. Eliminar
+      // 3. Eliminar Categoría
       await db.run("DELETE FROM Categorias WHERE id = ?", [id]);
-      res.json({ message: 'Categoría eliminada.' });
+      res.json({ message: 'Categoría y sus platos eliminados correchamente.' });
     } catch (error) {
       console.error('Error al eliminar categoría:', error);
       res.status(500).json({ error: 'Error interno.' });
@@ -105,7 +114,7 @@ function createMenuRoutes(db) {
    */
   router.post('/platos', authMiddleware, async (req, res) => {
     try {
-      const { nombre_plato, descripcion, precio, categoria_id } = req.body;
+      const { nombre_plato, descripcion, precio, categoria_id, imagen_url, tiempo_preparacion } = req.body;
       if (!nombre_plato || !precio || !categoria_id) {
         return res.status(400).json({ error: 'Faltan campos (nombre_plato, precio, categoria_id).' });
       }
@@ -121,8 +130,8 @@ function createMenuRoutes(db) {
       }
 
       const nuevoPlato = await db.run(
-        "INSERT INTO Platos (nombre_plato, descripcion, precio, categoria_id) VALUES (?, ?, ?, ?)",
-        [nombre_plato, descripcion, precio, categoria_id]
+        "INSERT INTO Platos (nombre_plato, descripcion, precio, categoria_id, imagen_url, tiempo_preparacion) VALUES (?, ?, ?, ?, ?, ?)",
+        [nombre_plato, descripcion, precio, categoria_id, imagen_url || null, tiempo_preparacion || 15]
       );
       res.status(201).json({
         message: 'Plato creado con éxito.',

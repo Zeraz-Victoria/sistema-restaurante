@@ -125,6 +125,22 @@ function createPublicRoutes(db) {
     }
   });
 
+  router.get('/mesas', async (req, res) => {
+    try {
+      const { restaurante_id } = req.query;
+      if (!restaurante_id) return res.status(400).json({ error: 'Falta restaurante_id' });
+
+      const mesas = await db.all(
+        "SELECT id, numero_mesa FROM Mesas WHERE restaurante_id = ? ORDER BY numero_mesa ASC",
+        [restaurante_id]
+      );
+      res.json(mesas);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Error al obtener mesas' });
+    }
+  });
+
   return router;
 }
 
