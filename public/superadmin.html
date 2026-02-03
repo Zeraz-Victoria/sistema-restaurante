@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartOrder - Super Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-100 font-sans">
+
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" class="fixed inset-0 bg-gray-900 z-50 flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Super Admin</h1>
+            <p class="text-sm text-gray-500 mb-6">Acceso Restringido</p>
+            <input type="password" id="masterKey" placeholder="Clave Maestra" class="w-full border p-3 rounded mb-4">
+            <button onclick="checkAuth()"
+                class="w-full bg-gray-800 text-white font-bold py-3 rounded hover:bg-black transition">Entrar</button>
+        </div>
+    </div>
+
+    <div id="appContent" class="hidden min-h-screen flex flex-col">
+        <!-- HEADER -->
+        <header class="bg-white shadow z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-shield-alt text-indigo-600 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-800">Panel Maestro</h1>
+                </div>
+                <button onclick="logout()" class="text-gray-500 hover:text-red-500 text-sm">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- MAIN -->
+        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+            <!-- STATS CARDS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
+                    <p class="text-gray-500 text-xs font-bold uppercase">Total Restaurantes</p>
+                    <h2 class="text-3xl font-bold text-gray-800 mt-1" id="totalRests">0</h2>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                    <p class="text-gray-500 text-xs font-bold uppercase">Sistema</p>
+                    <h2 class="text-lg font-bold text-green-600 mt-1">Activo</h2>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                    <p class="text-gray-500 text-xs font-bold uppercase">Plan</p>
+                    <h2 class="text-lg font-bold text-blue-600 mt-1">Enterprise</h2>
+                </div>
+            </div>
+
+            <!-- ACTION BAR -->
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-700">Restaurantes Registrados</h2>
+                <button onclick="openCreateModal()"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Nuevo Restaurante
+                </button>
+            </div>
+
+            <!-- RESTAURANTS TABLE -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                ID (Slug)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Nombre Negocio</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Contacto</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Fecha Alta</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="restTableBody">
+                        <!-- JS Loaded -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- CREATE MODAL -->
+    <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Registrar Nuevo Restaurante</h3>
+                <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+
+            <form id="createForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Nombre del Negocio</label>
+                    <input type="text" id="newRestName" required placeholder="Ej: Pizzería Luigi"
+                        class="w-full border rounded p-2" oninput="generateSlug()">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">ID Único (Slug)</label>
+                    <div class="flex">
+                        <span
+                            class="inline-flex items-center px-3 rounded-l border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">@</span>
+                        <input type="text" id="newRestSlug" required placeholder="pizzeria_luigi"
+                            class="w-full border rounded-r p-2 font-mono text-sm bg-gray-50" readonly>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Este ID se usará en los enlaces y QR.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Nombre Dueño/Contacto</label>
+                    <input type="text" id="newRestOwner" placeholder="Ej: Luigi Mario"
+                        class="w-full border rounded p-2">
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white font-bold py-3 rounded hover:bg-indigo-700 transition">
+                        Crear Restaurante
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        // --- AUTH ---
+        window.checkAuth = () => {
+            const key = document.getElementById('masterKey').value;
+            // HARDCODED DEMO KEY - In production use Firebase Auth or proper backend check
+            if (key === "admin123") {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('appContent').classList.remove('hidden');
+                loadRestaurants();
+            } else {
+                alert("Clave incorrecta");
+            }
+        };
+
+        window.logout = () => location.reload();
+
+        // --- MANAGE RESTAURANTS ---
+        const restTableBody = document.getElementById('restTableBody');
+        const totalRestsDisplay = document.getElementById('totalRests');
+
+        async function loadRestaurants() {
+            restTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center">Cargando...</td></tr>';
+
+            try {
+                // In a real SaaS, we would list documents from 'restaurants' collection
+                // Since this is MVP, we might ensure we create a doc in 'restaurants' when 'saasLogin' happens too?
+                // Actually, 'saasLogin' in admin.html currently just uses the ID locally.
+                // It DOES NOT create a 'restaurant' document automatically unless we code it.
+                // So this dashboard will be the SOURCE OF TRUTH for created restaurants.
+
+                const q = query(collection(db, "restaurants"));
+                const querySnapshot = await getDocs(q);
+
+                const rests = [];
+                querySnapshot.forEach((doc) => {
+                    rests.push({ id: doc.id, ...doc.data() });
+                });
+
+                renderTable(rests);
+
+            } catch (e) {
+                console.error("Error loading restaurants:", e);
+                restTableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderTable(rests) {
+            restTableBody.innerHTML = '';
+            totalRestsDisplay.innerText = rests.length;
+
+            if (rests.length === 0) {
+                restTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay restaurantes registrados aún.</td></tr>';
+                return;
+            }
+
+            rests.forEach(r => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50";
+
+                // Construct Links
+                const HOST = window.location.origin;
+                const adminLink = `${HOST}/admin.html`; // Admin needs manual login, can't deep link strictly without auth token, but we can copy ID
+                const kdsLink = `${HOST}/cocina.html?restId=${r.id}`;
+                const clientLink = `${HOST}/cliente.html?restId=${r.id}&mesaId=mesa_01`; // Demo link
+
+                const date = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="font-mono text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded select-all">${r.id}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">${r.name || 'Sin Nombre'}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${r.owner || '-'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${date}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-3">
+                        <a href="${kdsLink}" target="_blank" class="text-blue-600 hover:text-blue-900" title="Ver Cocina"><i class="fas fa-utensils"></i></a>
+                        <a href="${clientLink}" target="_blank" class="text-green-600 hover:text-green-900" title="Ver Cliente (Demo)"><i class="fas fa-qrcode"></i></a>
+                        <button onclick="copyToClip('${r.id}')" class="text-gray-500 hover:text-gray-700" title="Copiar ID"><i class="far fa-copy"></i></button>
+                    </td>
+                `;
+                restTableBody.appendChild(row);
+            });
+        }
+
+        // --- CREATE ---
+        window.openCreateModal = () => document.getElementById('createModal').classList.remove('hidden');
+        window.closeCreateModal = () => document.getElementById('createModal').classList.add('hidden');
+
+        window.generateSlug = () => {
+            const name = document.getElementById('newRestName').value;
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            document.getElementById('newRestSlug').value = slug;
+        };
+
+        const createForm = document.getElementById('createForm');
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('newRestSlug').value;
+            const name = document.getElementById('newRestName').value;
+            const owner = document.getElementById('newRestOwner').value;
+
+            if (!id) return;
+
+            try {
+                // Check if exists
+                // In firestore setDoc with merge:false overwrites, usually we want to check first for safety
+                // For MVP, we'll just set it.
+
+                await setDoc(doc(db, "restaurants", id), {
+                    id: id,
+                    name: name,
+                    owner: owner,
+                    createdAt: Timestamp.now(),
+                    active: true
+                });
+
+                alert("Restaurante creado exitosamente");
+                createForm.reset();
+                closeCreateModal();
+                loadRestaurants();
+
+            } catch (e) {
+                console.error(e);
+                alert("Error creando restaurante");
+            }
+        });
+
+        // --- UTILS ---
+        window.copyToClip = (text) => {
+            navigator.clipboard.writeText(text);
+            alert("ID copiado al portapapeles: " + text);
+        }
+
+    </script>
+</body>
+
+</html>
