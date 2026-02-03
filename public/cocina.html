@@ -65,6 +65,19 @@
 
         const ordersGrid = document.getElementById('ordersGrid');
 
+        // --- SAAS PARAMS ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const REST_ID = urlParams.get('restId');
+
+        if (!REST_ID) {
+            ordersGrid.innerHTML = '<p class="text-red-500 font-bold text-center col-span-full mt-10 text-2xl">Error: Falta ID de Restaurante en la URL.</p>';
+            throw new Error("Missing restId");
+        }
+
+        // Set context in header (optional)
+        document.querySelector('h1').innerText += ` (${REST_ID.toUpperCase()})`;
+
+
         // --- REAL TIME CLOCK ---
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString('es-ES');
@@ -74,12 +87,11 @@
 
         // --- FIRESTORE LISTENER ---
         // Query: Orders where status is 'pendiente' OR 'cocinando'
-        // Firestore 'in' query supports up to 10 values.
+        // Path: restaurants/{REST_ID}/ordenes
+
         const q = query(
-            collection(db, "ordenes"),
+            collection(db, `restaurants/${REST_ID}/ordenes`),
             where("estado", "in", ["pendiente", "cocinando"])
-            // Note: Compound queries with 'orderBy' usually require an index. 
-            // We'll sort via JS for simplicity if index errors arise, or assume index creation.
         );
 
         let currentOrders = [];
@@ -103,7 +115,7 @@
             ordersGrid.innerHTML = '';
 
             if (orders.length === 0) {
-                ordersGrid.innerHTML = '<p class="text-gray-500 text-center col-span-full mt-10">No hay órdenes pendientes.</p>';
+                ordersGrid.innerHTML = '<p class="text-gray-500 text-center col-span-full mt-10">No hay órdenes pendientes para ' + REST_ID + '.</p>';
                 return;
             }
 
@@ -223,7 +235,7 @@
         // --- ACTIONS ---
         window.updateStatus = async (orderId, newStatus) => {
             try {
-                const orderRef = doc(db, "ordenes", orderId);
+                const orderRef = doc(db, `restaurants/${REST_ID}/ordenes`, orderId);
                 await updateDoc(orderRef, {
                     estado: newStatus
                 });

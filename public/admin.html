@@ -229,6 +229,26 @@
         </main>
     </div>
 
+    <!-- SAAS LOGIN OVERLAY -->
+    <div id="saasLoginOverlay" class="fixed inset-0 bg-gray-900 z-[100] flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">SmartOrder SaaS</h1>
+            <p class="text-gray-500 mb-6">Plataforma de Gestión para Restaurantes</p>
+
+            <div class="text-left mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-1">ID de tu Restaurante</label>
+                <input type="text" id="loginRestId" placeholder="Ej: pizzeria_luigi"
+                    class="w-full border-2 border-indigo-100 rounded-lg p-3 text-lg focus:outline-none focus:border-indigo-600 uppercase transition">
+                <p class="text-xs text-gray-400 mt-1">Este ID separa tus datos de los demás negocios.</p>
+            </div>
+
+            <button onclick="saasLogin()"
+                class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg transform hover:scale-[1.02]">
+                Entrar / Crear Panel
+            </button>
+        </div>
+    </div>
+
     <!-- Category Modal -->
     <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 w-96 shadow-xl">
@@ -245,268 +265,206 @@
     </div>
 
     <!-- Firebase Logic -->
-    <script type="module">
-        import { db, storage } from './firebase-config.js';
-        import { collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-        import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+    "Platos Fuertes": "https://cdn-icons-png.flaticon.com/512/3274/3274099.png",
+    "Entradas": "https://cdn-icons-png.flaticon.com/512/1376/1376358.png",
+    "Postres": "https://cdn-icons-png.flaticon.com/512/3081/3081967.png",
+    "default": "https://cdn-icons-png.flaticon.com/512/1828/1828884.png"
+    };
 
-        // --- MANAGING CATEGORIES ---
-        const catSelect = document.getElementById('dishCategory');
-        const catList = document.getElementById('categoriesList');
+    // --- MENU MANAGEMENT ---
 
-        // Load Categories
-        onSnapshot(collection(db, "categorias"), (snapshot) => {
-            catSelect.innerHTML = '';
-            catList.innerHTML = '';
+    const addDishForm = document.getElementById('addDishForm');
 
-            const cats = [];
-            snapshot.forEach(doc => cats.push({ id: doc.id, ...doc.data() }));
+    addDishForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = addDishForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando...';
 
-            // Fallback defaults if empty
-            if (cats.length === 0) {
-                ["Entradas", "Platos Fuertes", "Bebidas", "Postres"].forEach(async c => {
-                    await addDoc(collection(db, "categorias"), { nombre: c });
-                });
-                return;
-            }
+    const id = document.getElementById('dishId').value.trim();
+    const nombre = document.getElementById('dishName').value.trim();
+    const precio = parseFloat(document.getElementById('dishPrice').value);
+    const categoria = document.getElementById('dishCategory').value;
+    const descripcion = document.getElementById('dishDescription').value.trim();
+    const customizable = document.getElementById('dishCustomizable').checked;
+    const imageFile = document.getElementById('dishImage').files[0];
 
-            cats.forEach(c => {
-                // Populate Select
-                const opt = document.createElement('option');
-                opt.value = c.nombre;
-                opt.textContent = c.nombre;
-                catSelect.appendChild(opt);
+    let imageUrl;
 
-                // Populate Manage List
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center bg-gray-50 p-2 rounded";
-                li.innerHTML = `
-                    <span>${c.nombre}</span>
-                    <button onclick="deleteCategory('${c.id}')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>
-                 `;
-                catList.appendChild(li);
-            });
-        });
+    try {
+    if (imageFile) {
+    // Upload to Firebase Storage
+    const storageRef = ref(storage, `restaurants/${REST_ID}/menu_images/${id}_${Date.now()}`);
+    await uploadBytes(storageRef, imageFile);
+    imageUrl = await getDownloadURL(storageRef);
+    } else {
+    // Use Default
+    imageUrl = DEFAULT_IMAGES[categoria] || DEFAULT_IMAGES["default"];
+    }
 
-        // Global Category Functions
-        window.openCategoryModal = () => document.getElementById('categoryModal').classList.remove('hidden');
-        window.closeCategoryModal = () => document.getElementById('categoryModal').classList.add('hidden');
+    // Save to Firestore: restaurants/{REST_ID}/menu_items
+    await setDoc(doc(db, `restaurants/${REST_ID}/menu_items`, id), {
+    id: id,
+    nombre: nombre,
+    precio: precio,
+    categoria: categoria,
+    descripcion: descripcion,
+    imagen_url: imageUrl,
+    activo: true,
+    personalizable: customizable
+    });
 
-        window.addCategory = async () => {
-            const name = document.getElementById('newCatName').value.trim();
-            if (!name) return;
-            try {
-                await addDoc(collection(db, "categorias"), { nombre: name });
-                document.getElementById('newCatName').value = '';
-            } catch (e) { console.error(e); alert("Error"); }
-        };
-
-        window.deleteCategory = async (id) => {
-            if (!confirm("¿Borrar categoría?")) return;
-            try { await deleteDoc(doc(db, "categorias", id)); } catch (e) { console.error(e); }
-        };
-
-        // Default Image URLs (Placeholders)
-        const DEFAULT_IMAGES = {
-            "Bebidas": "https://cdn-icons-png.flaticon.com/512/2405/2405451.png",
-            "Platos Fuertes": "https://cdn-icons-png.flaticon.com/512/3274/3274099.png",
-            "Entradas": "https://cdn-icons-png.flaticon.com/512/1376/1376358.png",
-            "Postres": "https://cdn-icons-png.flaticon.com/512/3081/3081967.png",
-            "default": "https://cdn-icons-png.flaticon.com/512/1828/1828884.png"
-        };
-
-        // --- MENU MANAGEMENT ---
-
-        const addDishForm = document.getElementById('addDishForm');
-
-        addDishForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = addDishForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Guardando...';
-
-            const id = document.getElementById('dishId').value.trim();
-            const nombre = document.getElementById('dishName').value.trim();
-            const precio = parseFloat(document.getElementById('dishPrice').value);
-            const categoria = document.getElementById('dishCategory').value;
-            const descripcion = document.getElementById('dishDescription').value.trim();
-            const customizable = document.getElementById('dishCustomizable').checked;
-            const imageFile = document.getElementById('dishImage').files[0];
-
-            let imageUrl;
-
-            try {
-                if (imageFile) {
-                    // Upload to Firebase Storage
-                    const storageRef = ref(storage, `menu_images/${id}_${Date.now()}`);
-                    await uploadBytes(storageRef, imageFile);
-                    imageUrl = await getDownloadURL(storageRef);
-                } else {
-                    // Use Default
-                    imageUrl = DEFAULT_IMAGES[categoria] || DEFAULT_IMAGES["default"];
-                }
-
-                // Save to Firestore
-                await setDoc(doc(db, "menu_items", id), {
-                    id: id,
-                    nombre: nombre,
-                    precio: precio,
-                    categoria: categoria,
-                    descripcion: descripcion,
-                    imagen_url: imageUrl,
-                    activo: true, // Default to active
-                    personalizable: customizable
-                });
-
-                alert('Platillo guardado exitosamente');
-                addDishForm.reset();
-
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                alert("Error al guardar el platillo: " + error.message);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Guardar Platillo';
-            }
-        });
-
-        // Real-time Listener for Menu Items
-        const menuTableBody = document.getElementById('menuTableBody');
-
-        onSnapshot(collection(db, "menu_items"), (snapshot) => {
-            menuTableBody.innerHTML = '';
-            snapshot.forEach((docSnap) => {
-                const item = docSnap.data();
-                const row = document.createElement('tr');
-                row.className = "hover:bg-gray-50";
-
-                row.innerHTML = `
-                    <td class="px-5 py-5 border-b border-gray-200 text-sm">
-                        <img src="${item.imagen_url}" alt="${item.nombre}" class="h-10 w-10 rounded-full object-cover">
-                    </td>
-                    <td class="px-5 py-5 border-b border-gray-200 text-sm font-medium text-gray-900">
-                        ${item.nombre}
-                    </td>
-                    <td class="px-5 py-5 border-b border-gray-200 text-sm text-gray-500">
-                        <span class="bg-gray-200 rounded-full px-3 py-1 text-xs font-semibold text-gray-700">${item.categoria}</span>
-                    </td>
-                    <td class="px-5 py-5 border-b border-gray-200 text-sm text-gray-900">
-                        $${item.precio.toFixed(2)}
-                    </td>
-                    <td class="px-5 py-5 border-b border-gray-200 text-sm">
-                         <label class="switch">
-                            <input type="checkbox" ${item.activo ? 'checked' : ''} onchange="toggleStock('${item.id}', this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </td>
-                     <td class="px-5 py-5 border-b border-gray-200 text-sm">
-                        <button class="text-blue-600 hover:text-blue-900" onclick="editItem('${item.id}')">Editar</button>
-                    </td>
-                `;
-                menuTableBody.appendChild(row);
-            });
-        });
-
-        // Edit Item Function
-        window.editItem = async (id) => {
-            const docRef = doc(db, "menu_items", id);
-            // We can read from the DOM or fetch fresh. Fetching is safer.
-            // But since we have the snapshot, we can find it in a local variable if we stored it, 
-            // or just simple fetch.
-            // Let's scroll to top
-            document.getElementById('menu-management').scrollIntoView({ behavior: 'smooth' });
-
-            // Highlight form
-            addDishForm.classList.add('ring-4', 'ring-indigo-300');
-            setTimeout(() => addDishForm.classList.remove('ring-4', 'ring-indigo-300'), 1000);
-
-            // Fetch data (or use global cache if we had one, but fetch is cheap here)
-            // Actually, for immediate UI response, we can grab it from Firestore easily.
-            // However, note that we need 'getDoc' imported? No, we haven't imported getDoc in this file yet!
-            // Let's check imports. We only have collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, addDoc.
-            // We need getDoc to read a single item cleanly, OR we can just rely on the user re-entering data? 
-            // Better: Iterate the rows? No. 
-            // Let's just update the import to include getDoc and then use it.
-        };
-        window.toggleStock = async (id, isActive) => {
-            try {
-                const itemRef = doc(db, "menu_items", id);
-                await updateDoc(itemRef, {
-                    activo: isActive
-                });
-                console.log(`Stock updated for ${id}: ${isActive}`);
-            } catch (e) {
-                console.error("Error updating stock: ", e);
-                alert("Error al actualizar stock");
-            }
-        };
+    alert('Platillo guardado exitosamente');
+    addDishForm.reset();
+    addDishForm.querySelector('button[type="submit"]').textContent = 'Guardar Platillo';
+    document.getElementById('dishId').readOnly = false;
+    document.getElementById('dishId').classList.remove('bg-gray-100');
 
 
-        // --- TABLE MANAGEMENT ---
+    } catch (error) {
+    console.error("Error adding document: ", error);
+    alert("Error al guardar el platillo: " + error.message);
+    } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Guardar Platillo';
+    }
+    });
 
-        const createTableBtn = document.getElementById('createTableBtn');
+    // Real-time Listener for Menu Items
+    const menuTableBody = document.getElementById('menuTableBody');
+    const MENU_COLL = collection(db, `restaurants/${REST_ID}/menu_items`);
 
-        createTableBtn.addEventListener('click', async () => {
-            const tableId = document.getElementById('tableId').value.trim();
-            const tableName = document.getElementById('tableName').value.trim();
+    onSnapshot(MENU_COLL, (snapshot) => {
+    menuTableBody.innerHTML = '';
+    snapshot.forEach((docSnap) => {
+    const item = docSnap.data();
+    const row = document.createElement('tr');
+    row.className = "hover:bg-gray-50";
 
-            if (!tableId || !tableName) return alert("Completa ambos campos");
+    row.innerHTML = `
+    <td class="px-5 py-5 border-b border-gray-200 text-sm">
+        <img src="${item.imagen_url}" alt="${item.nombre}" class="h-10 w-10 rounded-full object-cover">
+    </td>
+    <td class="px-5 py-5 border-b border-gray-200 text-sm font-medium text-gray-900">
+        ${item.nombre}
+    </td>
+    <td class="px-5 py-5 border-b border-gray-200 text-sm text-gray-500">
+        <span class="bg-gray-200 rounded-full px-3 py-1 text-xs font-semibold text-gray-700">${item.categoria}</span>
+    </td>
+    <td class="px-5 py-5 border-b border-gray-200 text-sm text-gray-900">
+        $${item.precio.toFixed(2)}
+    </td>
+    <td class="px-5 py-5 border-b border-gray-200 text-sm">
+        <label class="switch">
+            <input type="checkbox" ${item.activo ? 'checked' : '' } onchange="toggleStock('${item.id}', this.checked)">
+            <span class="slider"></span>
+        </label>
+    </td>
+    <td class="px-5 py-5 border-b border-gray-200 text-sm">
+        <button class="text-blue-600 hover:text-blue-900" onclick="editItem('${item.id}')">Editar</button>
+    </td>
+    `;
+    menuTableBody.appendChild(row);
+    });
+    });
 
-            // Generate Client URL
-            // Assuming the app is hosted at the root or we find the current origin
-            // For local dev with Project IDX/VSCode Live Server, origin is robust enough usually.
-            // But user asked to use: https://tu-app.web.app/cliente.html?mesaId=mesa_01
-            // We will use window.location.origin to be dynamic.
-            const baseUrl = window.location.origin;
-            const finalUrl = `${baseUrl}/cliente.html?mesaId=${tableId}`;
+    // Edit Item Function
+    window.editItem = async (id) => {
+    const docRef = doc(db, `restaurants/${REST_ID}/menu_items`, id);
+    try {
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+    const data = docSnap.data();
 
-            try {
-                await setDoc(doc(db, "mesas", tableId), {
-                    id: tableId,
-                    nombre_visual: tableName,
-                    url_qr_completa: finalUrl
-                });
+    document.getElementById('dishId').value = data.id;
+    document.getElementById('dishId').readOnly = true;
+    document.getElementById('dishId').classList.add('bg-gray-100');
 
-                document.getElementById('tableId').value = '';
-                document.getElementById('tableName').value = '';
-                alert("Mesa creada");
-            } catch (e) {
-                console.error("Error creating table: ", e);
-                alert("Error al crear mesa");
-            }
-        });
+    document.getElementById('dishName').value = data.nombre;
+    document.getElementById('dishPrice').value = data.precio;
+    document.getElementById('dishCategory').value = data.categoria;
+    document.getElementById('dishDescription').value = data.descripcion;
+    document.getElementById('dishCustomizable').checked = data.personalizable !== false;
 
-        // Real-time Listener for Tables
-        const tablesContainer = document.getElementById('tablesContainer');
+    document.getElementById('menu-management').scrollIntoView({behavior: 'smooth'});
 
-        onSnapshot(collection(db, "mesas"), (snapshot) => {
-            tablesContainer.innerHTML = '';
-            snapshot.forEach((docSnap) => {
-                const mesa = docSnap.data();
+    addDishForm.classList.add('ring-4', 'ring-indigo-300');
+    setTimeout(() => addDishForm.classList.remove('ring-4', 'ring-indigo-300'), 1000);
 
-                const card = document.createElement('div');
-                card.className = "bg-white p-6 rounded-lg shadow border-l-4 border-indigo-500";
+    addDishForm.querySelector('button[type="submit"]').textContent = 'Actualizar Platillo';
 
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="text-xl font-bold text-gray-800">${mesa.nombre_visual}</h4>
-                            <p class="text-xs text-gray-500 font-mono mt-1">ID: ${mesa.id}</p>
-                        </div>
-                        <i class="fas fa-chair text-gray-300 text-2xl"></i>
-                    </div>
-                    <div class="mt-4">
-                        <p class="text-sm text-gray-600 mb-2">QR Link:</p>
-                        <input type="text" readonly value="${mesa.url_qr_completa}" class="w-full bg-gray-50 border text-xs p-2 rounded select-all focus:outline-none focus:ring-2 focus:ring-indigo-200">
-                    </div>
-                     <div class="mt-4 flex gap-2">
-                        <a href="${mesa.url_qr_completa}" target="_blank" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-gray-700">Abrir (Test)</a>
-                        <!-- In a real app we might integrate a QR library here -->
-                     </div>
-                `;
-                tablesContainer.appendChild(card);
-            });
-        });
+    }
+    } catch (e) { console.error(e); }
+    };
+
+    window.toggleStock = async (id, isActive) => {
+    try {
+    const itemRef = doc(db, `restaurants/${REST_ID}/menu_items`, id);
+    await updateDoc(itemRef, { activo: isActive });
+    } catch (e) { console.error(e); }
+    };
+
+
+    // --- TABLE MANAGEMENT ---
+
+    const createTableBtn = document.getElementById('createTableBtn');
+
+    createTableBtn.addEventListener('click', async () => {
+    const tableId = document.getElementById('tableId').value.trim();
+    const tableName = document.getElementById('tableName').value.trim();
+
+    if (!tableId || !tableName) return alert("Completa ambos campos");
+
+    const baseUrl = window.location.origin;
+    // UPDATE: URL must include restId
+    const finalUrl = `${baseUrl}/cliente.html?restId=${REST_ID}&mesaId=${tableId}`;
+
+    try {
+    // Save to: restaurants/{REST_ID}/mesas
+    await setDoc(doc(db, `restaurants/${REST_ID}/mesas`, tableId), {
+    id: tableId,
+    nombre_visual: tableName,
+    url_qr_completa: finalUrl
+    });
+
+    document.getElementById('tableId').value = '';
+    document.getElementById('tableName').value = '';
+    alert("Mesa creada");
+    } catch (e) { console.error(e); alert("Error"); }
+    });
+
+    const tablesContainer = document.getElementById('tablesContainer');
+    const MESAS_COLL = collection(db, `restaurants/${REST_ID}/mesas`);
+
+    onSnapshot(MESAS_COLL, (snapshot) => {
+    tablesContainer.innerHTML = '';
+    snapshot.forEach((docSnap) => {
+    const mesa = docSnap.data();
+
+    const card = document.createElement('div');
+    card.className = "bg-white p-6 rounded-lg shadow border-l-4 border-indigo-500";
+
+    card.innerHTML = `
+    <div class="flex justify-between items-start">
+        <div>
+            <h4 class="text-xl font-bold text-gray-800">${mesa.nombre_visual}</h4>
+            <p class="text-xs text-gray-500 font-mono mt-1">ID: ${mesa.id}</p>
+        </div>
+        <i class="fas fa-chair text-gray-300 text-2xl"></i>
+    </div>
+    <div class="mt-4">
+        <p class="text-sm text-gray-600 mb-2">QR Link:</p>
+        <input type="text" readonly value="${mesa.url_qr_completa}"
+            class="w-full bg-gray-50 border text-xs p-2 rounded select-all focus:outline-none focus:ring-2 focus:ring-indigo-200">
+    </div>
+    <div class="mt-4 flex gap-2">
+        <a href="${mesa.url_qr_completa}" target="_blank"
+            class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-gray-700">Abrir (Test)</a>
+    </div>
+    `;
+    tablesContainer.appendChild(card);
+    });
+    });
 
     </script>
 </body>

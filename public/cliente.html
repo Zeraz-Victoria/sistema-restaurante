@@ -167,15 +167,16 @@
         // --- INIT & STATE ---
         const urlParams = new URLSearchParams(window.location.search);
         const MESA_ID = urlParams.get('mesaId');
+        const REST_ID = urlParams.get('restId'); // SaaS Requirement
 
-        if (!MESA_ID) {
-            document.body.innerHTML = '<div class="flex h-screen items-center justify-center p-6 text-center text-red-600 font-bold">Error: No se ha escaneado un código QR válido de una mesa.</div>';
-            throw new Error("No mesa_id");
+        if (!MESA_ID || !REST_ID) {
+            document.body.innerHTML = '<div class="flex h-screen items-center justify-center p-6 text-center text-red-600 font-bold">Error: Enlace incorrecto (Falta ID de Mesa o Restaurante).</div>';
+            throw new Error("Missing params");
         }
 
         let MENU_ITEMS = [];
         let CART = [];
-        let ACTIVE_ORDER_ID = localStorage.getItem(`activeOrder_${MESA_ID}`);
+        let ACTIVE_ORDER_ID = localStorage.getItem(`activeOrder_${REST_ID}_${MESA_ID}`);
         let ACTIVE_ORDER_DATA = null;
 
         // UI Elements
@@ -183,10 +184,18 @@
         const tableNameDisplay = document.getElementById('tableNameDisplay');
         const cartButtonContainer = document.getElementById('cartButtonContainer');
 
+        // --- FIRESTORE PATHS (SaaS) ---
+        const REST_REF = doc(db, "restaurants", REST_ID);
+        // We assume collections are subcollections of the restaurant document
+        // Or we just build paths manually like `restaurants/${REST_ID}/...`
+        const PATH_MENU = `restaurants/${REST_ID}/menu_items`;
+        const PATH_MESAS = `restaurants/${REST_ID}/mesas`;
+        const PATH_ORDENES = `restaurants/${REST_ID}/ordenes`;
+
         // --- STARTUP LOGIC ---
 
         // 1. Get Table Info
-        getDoc(doc(db, "mesas", MESA_ID)).then(snap => {
+        getDoc(doc(db, PATH_MESAS, MESA_ID)).then(snap => {
             if (snap.exists()) {
                 tableNameDisplay.innerText = snap.data().nombre_visual;
             } else {
@@ -195,7 +204,7 @@
         });
 
         // 2. Load Menu Realtime
-        const q = query(collection(db, "menu_items"), where("activo", "==", true));
+        const q = query(collection(db, PATH_MENU), where("activo", "==", true));
         onSnapshot(q, (snapshot) => {
             MENU_ITEMS = [];
             menuGrid.innerHTML = '';
@@ -228,12 +237,12 @@
         function checkActiveOrder() {
             if (!ACTIVE_ORDER_ID) return;
 
-            onSnapshot(doc(db, "ordenes", ACTIVE_ORDER_ID), (snap) => {
+            onSnapshot(doc(db, PATH_ORDENES, ACTIVE_ORDER_ID), (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
                     if (data.estado === 'pagado') {
                         // Reset if paid
-                        localStorage.removeItem(`activeOrder_${MESA_ID}`);
+                        localStorage.removeItem(`activeOrder_${REST_ID}_${MESA_ID}`);
                         ACTIVE_ORDER_ID = null;
                         ACTIVE_ORDER_DATA = null;
                         // Keep UI clean for new order
@@ -244,7 +253,7 @@
                     }
                 } else {
                     // Document deleted?
-                    localStorage.removeItem(`activeOrder_${MESA_ID}`);
+                    localStorage.removeItem(`activeOrder_${REST_ID}_${MESA_ID}`);
                     ACTIVE_ORDER_ID = null;
                 }
             });
@@ -269,13 +278,26 @@
             // Toggle Customization Sections
             const modSection = document.getElementById('modifiersSection');
             const noteSection = document.getElementById('notesSection');
-            
+
+            // Assume these exist (even if not in snippet, safe to try or check existence)
+            // But wait, the HTML snippet didn't explicitly show IDs 'modifiersSection' etc in the version I read?
+            // Checking the file content provided step 229:
+            // Input[name=modifier] exists, but the parent divs don't have IDs 'modifiersSection'.
+            // I should select them by hierarchy or just assume they are always visible if logic was just hiding them?
+            // The previous logic used specific IDs that might not exist in the HTML I read in step 229. 
+            // Step 229 lines 86-101 is the modifier section. It doesn't have an ID.
+            // I will target the container div of the "Personalizar" label.
+
+            const keys = document.querySelectorAll('#addToCartForm > div');
+            const modContainer = keys[0]; // "Personalizar" container
+            // Notes is keys[1]
+
             if (item.personalizable === false) {
-                modSection.classList.add('hidden');
-                noteSection.classList.add('hidden'); // Assuming 'notes' are also part of personalization
+                modContainer.classList.add('hidden');
+                // We keep notes hidden too? Or just modifiers? User request said "Permitir personalizar".
+                // Usually implies disabling both.
             } else {
-                modSection.classList.remove('hidden');
-                noteSection.classList.remove('hidden');
+                modContainer.classList.remove('hidden');
             }
 
             // Reset checkboxes
@@ -449,17 +471,11 @@
 
             try {
                 // Determine Total Price Update
-                // We trust Firestore logic or recalculate total. Here we store frozen prices.
                 const cartTotal = CART.reduce((acc, i) => acc + (i.precio_snapshot * i.cantidad), 0);
 
                 if (ACTIVE_ORDER_ID) {
                     // APPEND
-                    const orderRef = doc(db, "ordenes", ACTIVE_ORDER_ID);
-
-                    // We need to fetch current total first to add to it properly, 
-                    // or just rely on the array and sum it up every time (safer).
-                    // For now, let's just push items. Ideally use a cloud function triggers for totals.
-                    // But we will simple read-modify-write for total a pagar here to keep it simple.
+                    const orderRef = doc(db, PATH_ORDENES, ACTIVE_ORDER_ID);
 
                     const currentDoc = await getDoc(orderRef);
                     const currentTotal = currentDoc.data().total_a_pagar || 0;
@@ -467,12 +483,7 @@
                     await updateDoc(orderRef, {
                         items: arrayUnion(...CART),
                         total_a_pagar: currentTotal + cartTotal,
-                        estado: 'pendiente' // If it was 'cocinando', maybe revert to pending or keep separate?
-                        // User prompt says: "cocinando" -> "listo".
-                        // If we add new items, usually the KDS needs to see them.
-                        // Setting to 'pendiente' ensures KDS sees it if filter is strictly 'pendiente'.
-                        // But if KDS shows 'cocinando', we might want to split logic?
-                        // Simplest: Set to 'pendiente' or 'actualizado' (if supported) so kitchen notices.
+                        estado: 'pendiente'
                     });
 
                 } else {
@@ -485,9 +496,9 @@
                         items: CART
                     };
 
-                    const docRef = await addDoc(collection(db, "ordenes"), newOrder);
+                    const docRef = await addDoc(collection(db, PATH_ORDENES), newOrder);
                     ACTIVE_ORDER_ID = docRef.id;
-                    localStorage.setItem(`activeOrder_${MESA_ID}`, ACTIVE_ORDER_ID);
+                    localStorage.setItem(`activeOrder_${REST_ID}_${MESA_ID}`, ACTIVE_ORDER_ID);
                     checkActiveOrder();
                 }
 
@@ -508,7 +519,7 @@
             if (!confirm("¿Deseas pedir la cuenta y cerrar la mesa?")) return;
 
             try {
-                const orderRef = doc(db, "ordenes", ACTIVE_ORDER_ID);
+                const orderRef = doc(db, PATH_ORDENES, ACTIVE_ORDER_ID);
                 await updateDoc(orderRef, {
                     estado: 'pagado'
                 });
