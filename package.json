@@ -2,7 +2,7 @@
   "name": "sistema-restaurante",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "servidor.js",
   "scripts": {
     "start": "node servidor.js",
     "dev": "node --watch servidor.js",
